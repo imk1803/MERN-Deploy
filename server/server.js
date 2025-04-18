@@ -59,13 +59,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser()); // Add cookie parser middleware
 
 // CORS Configuration - Fixed to avoid duplication
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'https://curvot.vercel.app',
+const corsOptions = {
+    origin: 'https://curvot.vercel.app', // Hardcode chính xác domain frontend 
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['set-cookie']
-}));
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
+console.log('CORS Options:', corsOptions);
+app.use(cors(corsOptions));
+
+// Thêm header SameSite=None cho tất cả responses để hỗ trợ cross-site cookies
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://curvot.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    next();
+});
 
 // Log all requests for debugging
 app.use((req, res, next) => {
@@ -79,16 +92,16 @@ app.use((req, res, next) => {
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 
-// Determine environment for cookie settings
-const isProduction = process.env.NODE_ENV === 'production';
-console.log('Environment:', isProduction ? 'production' : 'development');
+// Determine environment for cookie settings - đơn giản hóa thành production vì đang chạy trên render.com
+const isProduction = true; 
+console.log('Environment: production (forced for render.com)');
 
 // Session configuration
 const sessionConfig = {
     name: 'shop.sid', // Set a specific cookie name
     secret: process.env.SESSION_SECRET || 'shop-session-secret-123',
-    resave: true, // Changed to ensure session is saved on every request
-    saveUninitialized: true, // Create session for all visitors
+    resave: true, // Luôn lưu lại session
+    saveUninitialized: true, // Tạo session cho mọi người dùng
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shop',
         ttl: 24 * 60 * 60, // 1 day
@@ -97,10 +110,12 @@ const sessionConfig = {
         touchAfter: 24 * 3600 // Time period in seconds to force session update
     }),
     cookie: {
-        secure: false, // Disable secure cookies for both environments for testing
+        secure: true, // HTTPS only
         httpOnly: true,
-        sameSite: 'lax', // Use 'lax' to ensure cookies work across domains
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
+        sameSite: 'none', // Quan trọng cho cross-domain
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        domain: 'curvot.onrender.com', // Chỉ định domain chính xác
+        path: '/'
     }
 };
 

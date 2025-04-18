@@ -26,14 +26,52 @@ const Cart = () => {
         const hasCookie = checkSessionCookie();
         console.log('Session cookie check:', hasCookie);
         
+        // Lưu sessionId tạm thời để theo dõi
+        if (localStorage.getItem('tempSessionId')) {
+          console.log('Previous session ID:', localStorage.getItem('tempSessionId'));
+        }
+        
+        // Kiểm tra xem có đang ở đúng domain không
+        const isCorrectDomain = window.location.origin === 'https://curvot.vercel.app';
+        console.log('Is correct domain:', isCorrectDomain);
+        
+        // Kiểm tra độ dài của cookie hiện tại
+        console.log('Document cookie length:', document.cookie.length);
+        
         const result = await testCartAPI();
         console.log('Cart API test successful:', result);
+        
+        // Lưu session ID mới
+        if (result.sessionId) {
+          localStorage.setItem('tempSessionId', result.sessionId);
+        }
+        
+        // Thử lưu cookie mới
+        if (result.sessionId && !hasCookie) {
+          try {
+            document.cookie = `shop.sid=${result.sessionId}; domain=curvot.onrender.com; path=/; secure; samesite=none; max-age=86400`;
+            console.log('Manually set cookie, now cookies:', document.cookie);
+          } catch (e) {
+            console.error('Failed to set cookie manually:', e);
+          }
+        }
         
         // If API test doesn't show any cart items but we think we should have some,
         // force a refresh to reload the cookies
         if (result.cartItems === 0 && localStorage.getItem('cartAdded')) {
           console.log('Cart appears empty but items should exist, refreshing page');
-          window.location.reload();
+          // Instead of refreshing, try to load manual cart from localStorage
+          const manualCart = localStorage.getItem('manualCart');
+          if (manualCart) {
+            try {
+              const cartData = JSON.parse(manualCart);
+              console.log('Loading cart from localStorage:', cartData);
+              setCart(cartData);
+              setLoading(false);
+            } catch (e) {
+              console.error('Failed to parse manual cart:', e);
+            }
+          }
         }
       } catch (err) {
         console.error('Cart API test failed:', err);

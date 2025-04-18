@@ -64,25 +64,78 @@ export const addToCart = async (productId) => {
         localStorage.setItem('cartLastUpdate', Date.now().toString());
         
         // First try to get the debug session to see what's in the cart on the server
+        let sessionData = null;
         try {
             const debugSession = await apiClient.get('/debug/session');
             console.log('Server session before adding:', debugSession.data);
+            sessionData = debugSession.data;
         } catch (e) {
             console.warn('Could not get debug session:', e);
         }
         
-        // Add product to cart
+        // Add product to cart on server
         const response = await apiClient.post(`/cart/add/${productId}`);
         console.log('Add to cart response:', response.data);
         
-        // Set cookie manually if needed
-        try {
-            document.cookie = `connect.sid=${response.data.sessionId}; path=/; max-age=86400`;
-        } catch (e) {
-            console.warn('Could not set cookie manually:', e);
+        // Set cookie manually if needed using the session ID from the response
+        if (response.data && response.data.sessionId) {
+            try {
+                document.cookie = `shop.sid=${response.data.sessionId}; domain=curvot.onrender.com; path=/; secure; samesite=none; max-age=86400`;
+                console.log('Set session cookie manually:', document.cookie);
+                localStorage.setItem('tempSessionId', response.data.sessionId);
+            } catch (e) {
+                console.warn('Could not set cookie manually:', e);
+            }
         }
         
-        // Verify cart was updated
+        // Load current manual cart
+        let manualCart = [];
+        try {
+            const savedCart = localStorage.getItem('manualCart');
+            if (savedCart) {
+                manualCart = JSON.parse(savedCart);
+            }
+        } catch (e) {
+            console.warn('Error loading manual cart from localStorage:', e);
+        }
+        
+        // Try to get product details
+        let productDetails = null;
+        try {
+            const productRes = await apiClient.get(`/products/${productId}`);
+            productDetails = productRes.data.product;
+        } catch (e) {
+            console.warn('Could not get product details:', e);
+        }
+        
+        // Update manual cart in localStorage as backup
+        if (productDetails) {
+            const existingItemIndex = manualCart.findIndex(item => item._id === productId);
+            
+            if (existingItemIndex >= 0) {
+                // Update existing item
+                manualCart[existingItemIndex].quantity += 1;
+            } else {
+                // Add new item
+                manualCart.push({
+                    _id: productId,
+                    productId: productId,
+                    quantity: 1,
+                    name: productDetails.name,
+                    price: productDetails.price,
+                    image: productDetails.image
+                });
+            }
+            
+            // Save updated cart to localStorage
+            localStorage.setItem('manualCart', JSON.stringify(manualCart));
+            console.log('Updated manual cart in localStorage:', manualCart);
+        } else if (response.data && response.data.cart) {
+            // If we couldn't get product details but have cart from response, use that
+            localStorage.setItem('manualCart', JSON.stringify(response.data.cart));
+        }
+        
+        // Verify cart was updated in server session
         try {
             const cartRes = await apiClient.get('/cart/cart');
             console.log('Cart after adding product:', cartRes.data);

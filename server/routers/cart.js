@@ -13,7 +13,10 @@ router.get('/test', (req, res) => {
         message: 'Cart API is working',
         sessionId: req.session.id,
         cartItems: req.session.cart ? req.session.cart.length : 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        hasSession: !!req.session,
+        hasCookies: Object.keys(req.cookies || {}).length > 0,
+        cookies: req.cookies || {}
     });
 });
 
