@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { toast } from 'react-hot-toast';
 import { useSelector } from 'react-redux';
+import { apiClient } from '../utils/axiosConfig';
 
 const Cart = () => {
   console.log('Cart component rendering');
@@ -16,15 +16,6 @@ const Cart = () => {
   const navigate = useNavigate();
   const { user } = useSelector(state => state.user);
 
-  // Sử dụng useMemo để tạo axiosInstance ổn định, không bị tạo mới mỗi lần render
-  const axiosInstance = useMemo(() => axios.create({
-    baseURL: 'https://curvot.onrender.com',
-    withCredentials: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }), []);
-
   // Sử dụng useCallback để định nghĩa fetchCart với dependency ổn định
   const fetchCart = useCallback(async () => {
     setLoading(true);
@@ -32,7 +23,7 @@ const Cart = () => {
     
     try {
       console.log('Fetching cart data...');
-      const res = await axiosInstance.get('/api/cart/cart');
+      const res = await apiClient.get('/cart/cart');
       console.log('Cart response:', res.data);
       
       if (!res.data.cart || res.data.cart.length === 0) {
@@ -45,7 +36,7 @@ const Cart = () => {
       const cartWithDetails = await Promise.all(
         res.data.cart.map(async (item) => {
           try {
-            const productRes = await axiosInstance.get(`/api/products/${item.productId}`);
+            const productRes = await apiClient.get(`/products/${item.productId}`);
             const product = productRes.data.product || {};
             return {
               _id: item.productId,
@@ -74,11 +65,11 @@ const Cart = () => {
     } finally {
       setLoading(false);
     }
-  }, [axiosInstance]);
+  }, []);
 
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]); // Chỉ gọi fetchCart khi component mount hoặc khi axiosInstance thay đổi (hiện đã ổn định)
+  }, [fetchCart]);
 
   // Debug log cho các state
   useEffect(() => {
@@ -94,22 +85,22 @@ const Cart = () => {
     let endpoint, message;
     
     if (action === 'increment') {
-      endpoint = `/api/cart/cart/increment/${id}`;
+      endpoint = `/cart/increment/${id}`;
       message = `Đã tăng số lượng ${name}`;
     } else if (action === 'decrement') {
-      endpoint = `/api/cart/cart/decrement/${id}`;
+      endpoint = `/cart/decrement/${id}`;
       message = `Đã giảm số lượng ${name}`;
     } else if (action === 'remove') {
-      endpoint = `/api/cart/cart/remove/${id}`;
+      endpoint = `/cart/remove/${id}`;
       message = `Đã xóa ${name} khỏi giỏ hàng`;
     }
     
     try {
-      await axiosInstance.post(endpoint);
+      await apiClient.post(endpoint);
       toast.success(message);
       
       // Lấy dữ liệu giỏ hàng cập nhật
-      const cartRes = await axiosInstance.get('/api/cart/cart');
+      const cartRes = await apiClient.get('/cart/cart');
       
       if (!cartRes.data.cart || cartRes.data.cart.length === 0) {
         setCart([]);
@@ -120,7 +111,7 @@ const Cart = () => {
       const cartWithDetails = await Promise.all(
         cartRes.data.cart.map(async (item) => {
           try {
-            const productRes = await axiosInstance.get(`/api/products/${item.productId}`);
+            const productRes = await apiClient.get(`/products/${item.productId}`);
             const product = productRes.data.product || {};
             return {
               _id: item.productId,

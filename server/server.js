@@ -77,18 +77,21 @@ app.use(cors({
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 
+// Determine environment for cookie settings
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(session({
     secret: process.env.SESSION_SECRET || '123',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Changed to true to ensure session is created even if not modified
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shop',
         ttl: 24 * 60 * 60 // 1 day
     }),
     cookie: {
-        secure: true, // ⚠️ BẮT BUỘC khi deploy trên HTTPS (Render dùng HTTPS)
+        secure: isProduction, // Only use secure in production environment
         httpOnly: true,
-        sameSite: 'none', // ⚠️ BẮT BUỘC nếu frontend khác domain (như Vercel)
+        sameSite: isProduction ? 'none' : 'lax', // Use 'none' in production, 'lax' in development
         maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
 }));

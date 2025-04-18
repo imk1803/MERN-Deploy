@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api';
+import { apiClient } from '../utils/axiosConfig';
 
 /**
  * Lấy nội dung giỏ hàng
@@ -8,7 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/ap
  */
 export const getCart = async () => {
     try {
-        const response = await axios.get(`${API_URL}/cart/cart`, { withCredentials: true });
+        const response = await apiClient.get('/cart/cart');
         console.log('Giỏ hàng:', response.data);  // Log dữ liệu giỏ hàng để kiểm tra
         return response.data;
     } catch (error) {
@@ -24,7 +22,7 @@ export const getCart = async () => {
  */
 export const addToCart = async (productId) => {
     try {
-        const response = await axios.post(`${API_URL}/cart/cart/add/${productId}`, {}, { withCredentials: true });
+        const response = await apiClient.post(`/cart/add/${productId}`);
         return response.data;
     } catch (error) {
         console.error('Lỗi khi thêm vào giỏ hàng:', error);
@@ -39,7 +37,7 @@ export const addToCart = async (productId) => {
  */
 export const incrementCartItem = async (productId) => {
     try {
-        const response = await axios.post(`${API_URL}/cart/cart/increment/${productId}`, {}, { withCredentials: true });
+        const response = await apiClient.post(`/cart/increment/${productId}`);
         return response.data;
     } catch (error) {
         console.error('Lỗi khi tăng số lượng:', error);
@@ -54,7 +52,7 @@ export const incrementCartItem = async (productId) => {
  */
 export const decrementCartItem = async (productId) => {
     try {
-        const response = await axios.post(`${API_URL}/cart/cart/decrement/${productId}`, {}, { withCredentials: true });
+        const response = await apiClient.post(`/cart/decrement/${productId}`);
         return response.data;
     } catch (error) {
         console.error('Lỗi khi giảm số lượng:', error);
@@ -69,7 +67,7 @@ export const decrementCartItem = async (productId) => {
  */
 export const removeFromCart = async (productId) => {
     try {
-        const response = await axios.post(`${API_URL}/cart/cart/remove/${productId}`, {}, { withCredentials: true });
+        const response = await apiClient.post(`/cart/remove/${productId}`);
         return response.data;
     } catch (error) {
         console.error('Lỗi khi xóa khỏi giỏ hàng:', error);
@@ -83,7 +81,7 @@ export const removeFromCart = async (productId) => {
  */
 export const clearCart = async () => {
     try {
-        const response = await axios.post(`${API_URL}/cart/cart/clear`, {}, { withCredentials: true });
+        const response = await apiClient.post('/cart/clear');
         return response.data;
     } catch (error) {
         console.error('Lỗi khi xóa toàn bộ giỏ hàng:', error);
