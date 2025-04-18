@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { 
   getLocalCart, 
   addToLocalCart, 
@@ -23,13 +23,25 @@ export const testCartAPI = async () => {
         console.log('Testing cart API connection...');
         const response = await axios.get(`${CART_API}/test`, { timeout: 5000 });
         console.log('Cart API test response:', response.data);
-        // API hoạt động, đánh dấu để biết không cần dùng local cart
-        localStorage.setItem('useLocalCart', 'false');
+        
+        // Only update localStorage if the value is different
+        const currentValue = localStorage.getItem('useLocalCart');
+        if (currentValue !== 'false') {
+            localStorage.setItem('useLocalCart', 'false');
+            console.log('Updated useLocalCart to false');
+        }
+        
         return response.data;
     } catch (error) {
         console.error('Không thể kết nối đến Cart API:', error);
-        // API không hoạt động, đánh dấu để biết cần dùng local cart
-        localStorage.setItem('useLocalCart', 'true');
+        
+        // Only update localStorage if the value is different
+        const currentValue = localStorage.getItem('useLocalCart');
+        if (currentValue !== 'true') {
+            localStorage.setItem('useLocalCart', 'true');
+            console.log('Updated useLocalCart to true');
+        }
+        
         return { 
           success: false, 
           message: 'Không thể kết nối đến giỏ hàng trên server, sử dụng giỏ hàng cục bộ.',

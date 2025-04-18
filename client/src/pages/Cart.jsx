@@ -20,15 +20,19 @@ const Cart = () => {
 
   // Test API connection when component mounts
   useEffect(() => {
+    // Flag to track if component is mounted to avoid state updates after unmount
+    let isMounted = true;
+    
     async function testAPI() {
       try {
         // Check if we have a session cookie
         const hasCookie = checkSessionCookie();
         console.log('Session cookie check:', hasCookie);
         
-        // Lưu sessionId tạm thời để theo dõi
-        if (localStorage.getItem('tempSessionId')) {
-          console.log('Previous session ID:', localStorage.getItem('tempSessionId'));
+        // Get previous session ID only once for comparison
+        const prevSessionId = localStorage.getItem('tempSessionId');
+        if (prevSessionId) {
+          console.log('Previous session ID:', prevSessionId);
         }
         
         // Kiểm tra xem có đang ở đúng domain không
@@ -39,14 +43,19 @@ const Cart = () => {
         console.log('Document cookie length:', document.cookie.length);
         
         const result = await testCartAPI();
+        
+        // Only update if component is still mounted
+        if (!isMounted) return;
+        
         console.log('Cart API test successful:', result);
         
-        // Lưu session ID mới
-        if (result.sessionId) {
+        // Lưu session ID mới chỉ khi khác với ID cũ
+        if (result.sessionId && result.sessionId !== prevSessionId) {
           localStorage.setItem('tempSessionId', result.sessionId);
+          console.log('New session ID saved:', result.sessionId);
         }
         
-        // Thử lưu cookie mới
+        // Thử lưu cookie mới chỉ khi không có cookie và chỉ một lần
         if (result.sessionId && !hasCookie) {
           try {
             document.cookie = `shop.sid=${result.sessionId}; domain=curvot.onrender.com; path=/; secure; samesite=none; max-age=86400`;
@@ -57,17 +66,20 @@ const Cart = () => {
         }
         
         // If API test doesn't show any cart items but we think we should have some,
-        // force a refresh to reload the cookies
+        // use localStorage cart instead of refreshing
         if (result.cartItems === 0 && localStorage.getItem('cartAdded')) {
-          console.log('Cart appears empty but items should exist, refreshing page');
-          // Instead of refreshing, try to load manual cart from localStorage
+          console.log('Cart appears empty but items should exist, loading from localStorage');
           const manualCart = localStorage.getItem('manualCart');
           if (manualCart) {
             try {
               const cartData = JSON.parse(manualCart);
               console.log('Loading cart from localStorage:', cartData);
-              setCart(cartData);
-              setLoading(false);
+              
+              // Only update if component is still mounted
+              if (isMounted) {
+                setCart(cartData);
+                setLoading(false);
+              }
             } catch (e) {
               console.error('Failed to parse manual cart:', e);
             }
@@ -77,8 +89,14 @@ const Cart = () => {
         console.error('Cart API test failed:', err);
       }
     }
+    
     testAPI();
-  }, []);
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array to run only once
 
   // Sử dụng useCallback để định nghĩa fetchCart với dependency ổn định
   const fetchCart = useCallback(async () => {
@@ -206,7 +224,7 @@ const Cart = () => {
   useEffect(() => {
     fetchCart();
     
-    // Set up an interval to check for cart updates every 5 seconds
+    // Set up an interval to check for cart updates every 10 seconds instead of 5
     // This helps when a product was added in another tab or window
     const checkInterval = setInterval(() => {
       // Check if there's a lastUpdateTime and if it's within the last minute
@@ -222,7 +240,7 @@ const Cart = () => {
           localStorage.removeItem('cartLastUpdate');
         }
       }
-    }, 5000);
+    }, 10000); // Increased from 5000 to 10000 ms
     
     // Clean up interval on unmount
     return () => clearInterval(checkInterval);

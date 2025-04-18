@@ -33,6 +33,7 @@ import UserForm from './pages/Admin/UserForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserProtectedRoute from './components/UserProtectedRoute';
 import AccessDenied from './pages/AccessDenied';
+import { Toaster } from 'react-hot-toast';
 
 // Layout component that conditionally renders Header and Footer
 const AppLayout = ({ children }) => {
@@ -184,6 +185,23 @@ const App = () => {
             <AppContent />
           </AppLayout>
         </Router>
+        <Toaster position="top-right" toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#2ecc71',
+            },
+          },
+          error: {
+            style: {
+              background: '#e74c3c',
+            },
+          },
+        }} />
       </NotificationProvider>
     </Provider>
   );
