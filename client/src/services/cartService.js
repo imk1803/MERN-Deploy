@@ -1,11 +1,28 @@
 import { apiClient } from '../utils/axiosConfig';
 
 /**
+ * Test the cart API connection
+ * @returns {Promise} Test result
+ */
+export const testCartAPI = async () => {
+    try {
+        console.log('Testing cart API connection...');
+        const response = await apiClient.get('/cart/test');
+        console.log('Cart API test response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Cart API test failed:', error);
+        throw error;
+    }
+};
+
+/**
  * Lấy nội dung giỏ hàng
  * @returns {Promise} Thông tin giỏ hàng
  */
 export const getCart = async () => {
     try {
+        console.log('Calling getCart API');
         const response = await apiClient.get('/cart/cart');
         console.log('Giỏ hàng:', response.data);  // Log dữ liệu giỏ hàng để kiểm tra
         return response.data;
@@ -22,10 +39,12 @@ export const getCart = async () => {
  */
 export const addToCart = async (productId) => {
     try {
+        console.log('Adding to cart, product ID:', productId);
         const response = await apiClient.post(`/cart/add/${productId}`);
+        console.log('Add to cart response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Lỗi khi thêm vào giỏ hàng:', error);
+        console.error('Lỗi khi thêm vào giỏ hàng:', error, 'Product ID:', productId);
         throw error;
     }
 };
@@ -96,7 +115,9 @@ export const clearCart = async () => {
  */
 const handleAddToCart = async (productId, showNotification) => {
     try {
-        await addToCart(productId);
+        console.log('Handle add to cart for product:', productId);
+        const result = await addToCart(productId);
+        console.log('Add to cart result:', result);
         
         // Sử dụng thông báo nếu được cung cấp, ngược lại dùng alert
         if (typeof showNotification === 'function') {

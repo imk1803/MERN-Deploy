@@ -4,6 +4,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { toast } from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { apiClient } from '../utils/axiosConfig';
+import { testCartAPI } from '../services/cartService';
 
 const Cart = () => {
   console.log('Cart component rendering');
@@ -16,6 +17,19 @@ const Cart = () => {
   const navigate = useNavigate();
   const { user } = useSelector(state => state.user);
 
+  // Test API connection when component mounts
+  useEffect(() => {
+    async function testAPI() {
+      try {
+        const result = await testCartAPI();
+        console.log('Cart API test successful:', result);
+      } catch (err) {
+        console.error('Cart API test failed:', err);
+      }
+    }
+    testAPI();
+  }, []);
+
   // Sử dụng useCallback để định nghĩa fetchCart với dependency ổn định
   const fetchCart = useCallback(async () => {
     setLoading(true);
@@ -23,6 +37,14 @@ const Cart = () => {
     
     try {
       console.log('Fetching cart data...');
+      // Check session first for debugging
+      try {
+        const sessionData = await apiClient.get('/debug/session');
+        console.log('Session data:', sessionData.data);
+      } catch (sessErr) {
+        console.warn('Could not fetch session data:', sessErr);
+      }
+      
       const res = await apiClient.get('/cart/cart');
       console.log('Cart response:', res.data);
       
@@ -41,18 +63,19 @@ const Cart = () => {
             return {
               _id: item.productId,
               quantity: item.quantity,
-              name: product.name || 'Sản phẩm không xác định',
-              price: product.price || 0,
-              image: product.image || null,
+              name: product.name || item.productName || 'Sản phẩm không xác định',
+              price: product.price || item.productPrice || 0,
+              image: product.image || item.productImage || null,
             };
           } catch (err) {
             console.error(`Error fetching details for product ${item.productId}:`, err);
+            // Use data from cart if product details can't be fetched
             return {
               _id: item.productId,
               quantity: item.quantity,
-              name: 'Sản phẩm không tồn tại',
-              price: 0,
-              image: null,
+              name: item.productName || 'Sản phẩm không tồn tại',
+              price: item.productPrice || 0,
+              image: item.productImage || null,
             };
           }
         })

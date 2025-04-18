@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 // API URL from environment variable or default to production URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api';
+// Make sure it has no trailing slash
+const API_URL = (process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api').replace(/\/$/, '');
+
+// Log the API URL to help with debugging
+console.log('API URL being used:', API_URL);
 
 // Global axios configuration
 axios.defaults.withCredentials = true;
@@ -28,6 +32,8 @@ export const createAxiosInstance = (baseURL = API_URL) => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      // Log every request to help with debugging
+      console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
       return config;
     },
     (error) => Promise.reject(error)
@@ -38,6 +44,7 @@ export const createAxiosInstance = (baseURL = API_URL) => {
     (response) => response,
     (error) => {
       console.error('API Error:', error.response?.data || error.message);
+      console.error('Request that failed:', error.config?.method, error.config?.url);
       return Promise.reject(error);
     }
   );

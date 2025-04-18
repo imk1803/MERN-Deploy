@@ -31,13 +31,6 @@ const ordersRoutes = require('./routers/orders');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-//
-app.use(
-    cors({
-      origin: "https://curvot.vercel.app",
-      credentials: true, // nếu bạn dùng cookie/session
-    })
-  );
 // ========================== DATABASE CONNECTION ==========================
 mongoose.connect(process.env.MONGODB_URI || '', {
     useNewUrlParser: true,
@@ -65,13 +58,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser()); // Add cookie parser middleware
 
-// CORS Configuration
+// CORS Configuration - Fixed to avoid duplication
 app.use(cors({
     origin: process.env.CLIENT_URL || 'https://curvot.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Log all requests for debugging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    console.log('Request headers:', req.headers);
+    next();
+});
 
 // Session Configuration
 const session = require('express-session');
@@ -96,13 +96,16 @@ app.use(session({
     }
 }));
 
-// Request Logger Middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
+// ========================== ROUTES ==========================
+// Debug route to check session
+app.get('/api/debug/session', (req, res) => {
+    res.json({
+        sessionId: req.session.id,
+        cart: req.session.cart || [],
+        user: req.session.user || null
+    });
 });
 
-// ========================== ROUTES ==========================
 // API Routes with version prefix
 const API_PREFIX = '/api';
 app.use(`${API_PREFIX}/users`, userRoutes);
