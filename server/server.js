@@ -63,12 +63,14 @@ app.use(cors({
     origin: process.env.CLIENT_URL || 'https://curvot.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['set-cookie']
 }));
 
 // Log all requests for debugging
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    console.log('Request cookies:', req.cookies);
     console.log('Request headers:', req.headers);
     next();
 });
@@ -85,7 +87,7 @@ console.log('Environment:', isProduction ? 'production' : 'development');
 const sessionConfig = {
     name: 'shop.sid', // Set a specific cookie name
     secret: process.env.SESSION_SECRET || 'shop-session-secret-123',
-    resave: false,
+    resave: true, // Changed to ensure session is saved on every request
     saveUninitialized: true, // Create session for all visitors
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shop',
@@ -95,9 +97,9 @@ const sessionConfig = {
         touchAfter: 24 * 3600 // Time period in seconds to force session update
     }),
     cookie: {
-        secure: isProduction, // Only use secure in production environment
+        secure: false, // Disable secure cookies for both environments for testing
         httpOnly: true,
-        sameSite: isProduction ? 'none' : 'lax', // Use 'none' in production for cross-domain
+        sameSite: 'lax', // Use 'lax' to ensure cookies work across domains
         maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
 };
@@ -122,6 +124,11 @@ app.use((req, res, next) => {
     
     next();
 });
+
+// Export session config for other modules
+module.exports = {
+    sessionConfig
+};
 
 // ========================== ROUTES ==========================
 // Debug route to check session

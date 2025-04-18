@@ -5,9 +5,14 @@ const Product = require('../models/Product');
 // Simple test route to check if cart router is working
 router.get('/test', (req, res) => {
     console.log('Cart test route accessed');
+    console.log('Current session ID:', req.session.id);
+    console.log('Current cart content:', req.session.cart || []);
+    
     res.status(200).json({
         success: true,
         message: 'Cart API is working',
+        sessionId: req.session.id,
+        cartItems: req.session.cart ? req.session.cart.length : 0,
         timestamp: new Date().toISOString()
     });
 });
@@ -15,11 +20,13 @@ router.get('/test', (req, res) => {
 // Middleware: Đảm bảo req.session.cart luôn tồn tại
 router.use((req, res, next) => {
     console.log('Cart middleware - Session ID:', req.session.id);
-    console.log('Cart middleware - Headers:', req.headers);
+    console.log('Cart middleware - Request cookies:', req.cookies);
     console.log('Cart middleware - Cart before init:', req.session.cart);
     
     if (!req.session.cart) {
+        console.log('Creating new cart in session');
         req.session.cart = [];
+        // Force save changes to session
         req.session.save(err => {
             if (err) {
                 console.error('Error saving empty cart to session:', err);
@@ -29,7 +36,7 @@ router.use((req, res, next) => {
             next();
         });
     } else {
-        console.log('Cart middleware - Cart already exists:', req.session.cart);
+        console.log('Cart middleware - Cart already exists with items:', req.session.cart.length);
         next();
     }
 });
@@ -37,17 +44,37 @@ router.use((req, res, next) => {
 // ========================== THÊM SẢN PHẨM VÀO GIỎ HÀNG ==========================
 router.post('/add/:id', async (req, res) => {
     try {
-        console.log('Add to cart request for product ID:', req.params.id);
+        const productId = req.params.id;
+        console.log('Add to cart request for product ID:', productId);
         console.log('Session ID:', req.session.id);
         
-        const product = await Product.findById(req.params.id);
+        // Ensure session cart exists
+        if (!req.session.cart) {
+            console.log('Creating cart array since it does not exist');
+            req.session.cart = [];
+        }
+        
+        const product = await Product.findById(productId);
         if (!product) {
-            console.log('Product not found with ID:', req.params.id);
+            console.log('Product not found with ID:', productId);
             return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
         }
 
-        console.log('Product found:', product.name);
-        const existing = req.session.cart.find(item => item.productId === product._id.toString());
+        console.log('Product found:', product.name, 'with ID:', product._id.toString());
+        console.log('Current cart items:', req.session.cart.length);
+        
+        // Convert product._id to string for safe comparison
+        const productIdString = product._id.toString();
+        
+        // Find if product already exists in cart
+        let existing = null;
+        for (let item of req.session.cart) {
+            console.log('Comparing cart item:', item.productId, 'with product:', productIdString);
+            if (item.productId === productIdString) {
+                existing = item;
+                break;
+            }
+        }
 
         if (existing) {
             console.log('Increasing quantity for existing product in cart');
@@ -55,7 +82,7 @@ router.post('/add/:id', async (req, res) => {
         } else {
             console.log('Adding new product to cart');
             req.session.cart.push({
-                productId: product._id.toString(),
+                productId: productIdString,
                 quantity: 1,
                 productName: product.name,
                 productPrice: product.price,
@@ -64,19 +91,29 @@ router.post('/add/:id', async (req, res) => {
         }
 
         console.log('Cart after update:', req.session.cart);
+        console.log('Cart length after update:', req.session.cart.length);
         
-        // Đảm bảo lưu session trước khi gửi phản hồi
+        // Force immediate save session to database
         req.session.save((err) => {
             if (err) {
                 console.error('Lỗi lưu session:', err);
                 return res.status(500).json({ success: false, message: 'Lỗi lưu session' });
             }
             console.log('Session saved successfully');
-            res.status(200).json({ success: true, message: 'Đã thêm vào giỏ hàng', cart: req.session.cart });
+            
+            // Ensure the session cookie is sent back to client
+            res.setHeader('Set-Cookie', `${sessionConfig.name}=${req.sessionID}; Path=/; HttpOnly`);
+            
+            res.status(200).json({ 
+                success: true, 
+                message: 'Đã thêm vào giỏ hàng', 
+                cart: req.session.cart,
+                sessionId: req.session.id
+            });
         });
     } catch (err) {
         console.error('Lỗi thêm vào giỏ hàng:', err);
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
     }
 });
 
@@ -87,11 +124,17 @@ router.post('/increment/:id', (req, res) => {
         console.log('Increment cart item:', id);
         console.log('Current cart:', req.session.cart);
         
-        const item = req.session.cart.find(item => item.productId === id);
-        if (item) {
-            item.quantity += 1;
-            console.log('Increased quantity to:', item.quantity);
-        } else {
+        let found = false;
+        for (let item of req.session.cart) {
+            if (item.productId === id) {
+                item.quantity += 1;
+                found = true;
+                console.log('Increased quantity to:', item.quantity);
+                break;
+            }
+        }
+        
+        if (!found) {
             console.log('Item not found in cart');
         }
         
@@ -115,7 +158,14 @@ router.post('/decrement/:id', (req, res) => {
         const { id } = req.params;
         console.log('Decrement cart item:', id);
         
-        const index = req.session.cart.findIndex(item => item.productId === id);
+        let index = -1;
+        for (let i = 0; i < req.session.cart.length; i++) {
+            if (req.session.cart[i].productId === id) {
+                index = i;
+                break;
+            }
+        }
+        
         if (index !== -1) {
             if (req.session.cart[index].quantity > 1) {
                 req.session.cart[index].quantity -= 1;
@@ -192,15 +242,25 @@ router.get('/cart', (req, res) => {
         console.log('Session ID:', req.session.id);
         console.log('Cart Data in session:', req.session.cart || []);
         
-        // Create a copy of the cart to avoid reference issues
-        const cartCopy = Array.isArray(req.session.cart) ? [...req.session.cart] : [];
+        // Ensure response always has a valid cart array
+        const cartData = Array.isArray(req.session.cart) ? req.session.cart : [];
+        
+        // Deep clone cart to avoid reference issues
+        const cartCopy = JSON.parse(JSON.stringify(cartData));
         
         console.log('Sending cart response:', { success: true, cart: cartCopy });
-        res.status(200).json({ success: true, cart: cartCopy });
+        res.status(200).json({ 
+            success: true, 
+            cart: cartCopy,
+            sessionId: req.session.id
+        });
     } catch (err) {
         console.error('Lỗi lấy giỏ hàng:', err);
         res.status(500).json({ success: false, message: "Lỗi lấy giỏ hàng" });
     }
 });
+
+// Import session config reference
+const sessionConfig = require('../server').sessionConfig;
 
 module.exports = router;

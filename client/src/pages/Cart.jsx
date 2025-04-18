@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { toast } from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { apiClient } from '../utils/axiosConfig';
+import { apiClient, checkSessionCookie } from '../utils/axiosConfig';
 import { testCartAPI } from '../services/cartService';
 
 const Cart = () => {
@@ -13,6 +13,7 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { user } = useSelector(state => state.user);
@@ -21,8 +22,19 @@ const Cart = () => {
   useEffect(() => {
     async function testAPI() {
       try {
+        // Check if we have a session cookie
+        const hasCookie = checkSessionCookie();
+        console.log('Session cookie check:', hasCookie);
+        
         const result = await testCartAPI();
         console.log('Cart API test successful:', result);
+        
+        // If API test doesn't show any cart items but we think we should have some,
+        // force a refresh to reload the cookies
+        if (result.cartItems === 0 && localStorage.getItem('cartAdded')) {
+          console.log('Cart appears empty but items should exist, refreshing page');
+          window.location.reload();
+        }
       } catch (err) {
         console.error('Cart API test failed:', err);
       }
@@ -36,7 +48,12 @@ const Cart = () => {
     setError(null);
     
     try {
-      console.log('Fetching cart data...');
+      console.log('Fetching cart data... (Attempt: ' + (retryCount + 1) + ')');
+      
+      // Check for session cookie
+      const hasCookie = checkSessionCookie();
+      console.log('Session cookie exists:', hasCookie);
+      
       // Check session first for debugging
       try {
         const sessionData = await apiClient.get('/debug/session');
@@ -52,6 +69,15 @@ const Cart = () => {
       // Check if cart data exists and is valid
       if (!res.data || !res.data.success) {
         console.error('Invalid cart response:', res.data);
+        
+        // Retry logic if we get invalid data (max 3 attempts)
+        if (retryCount < 3) {
+          console.log(`Retrying cart fetch (attempt ${retryCount + 1} of 3)...`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => fetchCart(), 1000); // Retry after 1 second
+          return;
+        }
+        
         setError('Invalid cart data received from server');
         setCart([]);
         setLoading(false);
@@ -68,6 +94,9 @@ const Cart = () => {
         setLoading(false);
         return;
       }
+      
+      // Update localStorage to indicate cart has items
+      localStorage.setItem('cartAdded', 'true');
       
       // Lấy thông tin chi tiết cho từng sản phẩm trong giỏ hàng
       const cartWithDetails = await Promise.all(
@@ -116,13 +145,25 @@ const Cart = () => {
       
       console.log('Processed cart items with details:', cartWithDetails);
       setCart(cartWithDetails);
+      setRetryCount(0); // Reset retry counter on success
     } catch (err) {
       console.error('Lỗi khi tải giỏ hàng:', err);
+      
+      // Retry logic for errors (max 3 attempts)
+      if (retryCount < 3) {
+        console.log(`Retrying cart fetch after error (attempt ${retryCount + 1} of 3)...`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => fetchCart(), 1500); // Retry after 1.5 seconds
+        return;
+      }
+      
       setError(`Không thể tải giỏ hàng: ${err.message || err.toString()}`);
     } finally {
-      setLoading(false);
+      if (retryCount >= 3 || cart.length > 0) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [retryCount]);
 
   useEffect(() => {
     fetchCart();

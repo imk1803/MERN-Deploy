@@ -30,6 +30,9 @@ export const createAxiosInstance = (baseURL = API_URL) => {
     xsrfHeaderName: 'X-XSRF-TOKEN',
   });
 
+  // Create cookie manager to ensure cookies persist between requests
+  let cookies = {};
+
   // Add request interceptor for auth headers
   instance.interceptors.request.use(
     (config) => {
@@ -40,6 +43,11 @@ export const createAxiosInstance = (baseURL = API_URL) => {
       
       // Ensure cookies are sent with each request
       config.withCredentials = true;
+      
+      // Apply stored cookies if available
+      if (document.cookie) {
+        config.headers.Cookie = document.cookie;
+      }
       
       // Log every request to help with debugging
       console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
@@ -55,6 +63,13 @@ export const createAxiosInstance = (baseURL = API_URL) => {
     (response) => {
       // Log successful responses for debugging
       console.log(`API Response (${response.status}):`, response.config.url);
+      
+      // Store any cookies from the response
+      const setCookie = response.headers['set-cookie'];
+      if (setCookie) {
+        console.log('Received cookies:', setCookie);
+      }
+      
       return response;
     },
     (error) => {
@@ -75,5 +90,14 @@ export const createAxiosInstance = (baseURL = API_URL) => {
 
 // Default API instance
 export const apiClient = createAxiosInstance();
+
+// Function to manually check if the client has a session cookie
+export const checkSessionCookie = () => {
+  const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+  const sessionCookie = cookies.find(cookie => cookie.startsWith('shop.sid='));
+  console.log('Current cookies:', cookies);
+  console.log('Session cookie found:', sessionCookie || 'None');
+  return sessionCookie ? true : false;
+};
 
 export default apiClient; 

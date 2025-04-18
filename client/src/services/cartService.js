@@ -56,8 +56,40 @@ export const getCart = async () => {
 export const addToCart = async (productId) => {
     try {
         console.log('Adding to cart, product ID:', productId);
+        
+        // Store product ID in localStorage temporarily to verify cart is working
+        localStorage.setItem('lastAddedProduct', productId);
+        localStorage.setItem('cartAdded', 'true');
+        
+        // First try to get the debug session to see what's in the cart on the server
+        try {
+            const debugSession = await apiClient.get('/debug/session');
+            console.log('Server session before adding:', debugSession.data);
+        } catch (e) {
+            console.warn('Could not get debug session:', e);
+        }
+        
+        // Add product to cart
         const response = await apiClient.post(`/cart/add/${productId}`);
         console.log('Add to cart response:', response.data);
+        
+        // Verify cart was updated
+        try {
+            const cartRes = await apiClient.get('/cart/cart');
+            console.log('Cart after adding product:', cartRes.data);
+            
+            // Check if product was actually added
+            const added = cartRes.data.cart && cartRes.data.cart.some(
+                item => item.productId === productId
+            );
+            
+            if (!added) {
+                console.warn('Product was not found in cart after adding');
+            }
+        } catch (e) {
+            console.warn('Could not verify cart contents:', e);
+        }
+        
         return response.data;
     } catch (error) {
         console.error('Lỗi khi thêm vào giỏ hàng:', error, 'Product ID:', productId);
@@ -132,15 +164,37 @@ export const clearCart = async () => {
 const handleAddToCart = async (productId, showNotification) => {
     try {
         console.log('Handle add to cart for product:', productId);
-        const result = await addToCart(productId);
+        
+        // Try to add product to cart multiple times if needed
+        let attempts = 0;
+        let result = null;
+        
+        while (attempts < 3) {
+            try {
+                result = await addToCart(productId);
+                break; // Exit loop if successful
+            } catch (err) {
+                attempts++;
+                console.warn(`Add to cart attempt ${attempts} failed:`, err);
+                if (attempts < 3) {
+                    // Wait before trying again
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw err; // Rethrow if all attempts failed
+                }
+            }
+        }
+        
         console.log('Add to cart result:', result);
         
         // Sử dụng thông báo nếu được cung cấp, ngược lại dùng alert
         if (typeof showNotification === 'function') {
-            showNotification('Đã thêm sản phẩm vào giỏ hàng!', 'success');
+            showNotification('Đã thêm sản phẩm vào giỏ hàng! Hãy vào giỏ hàng để xem.', 'success');
         } else {
-            alert(`✅ Đã thêm sản phẩm vào giỏ hàng!`);
+            alert(`✅ Đã thêm sản phẩm vào giỏ hàng! Hãy vào giỏ hàng để xem.`);
         }
+        
+        return result;
     } catch (err) {
         console.error('❌ Lỗi thêm vào giỏ hàng:', err);
         if (typeof showNotification === 'function') {
@@ -148,6 +202,7 @@ const handleAddToCart = async (productId, showNotification) => {
         } else {
             alert('❌ Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng!');
         }
+        throw err;
     }
 };
 
