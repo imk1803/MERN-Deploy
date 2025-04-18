@@ -1,4 +1,18 @@
-import { apiClient } from '../utils/axiosConfig';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { 
+  getLocalCart, 
+  addToLocalCart, 
+  incrementLocalCartItem, 
+  decrementLocalCartItem,
+  removeFromLocalCart,
+  clearLocalCart,
+  syncLocalCartWithServer
+} from '../utils/localCartUtils';
+
+// API URL
+const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api';
+const CART_API = `${API_URL}/cart`;
 
 /**
  * Test the cart API connection
@@ -7,13 +21,29 @@ import { apiClient } from '../utils/axiosConfig';
 export const testCartAPI = async () => {
     try {
         console.log('Testing cart API connection...');
-        const response = await apiClient.get('/cart/test');
+        const response = await axios.get(`${CART_API}/test`, { timeout: 5000 });
         console.log('Cart API test response:', response.data);
+        // API hoạt động, đánh dấu để biết không cần dùng local cart
+        localStorage.setItem('useLocalCart', 'false');
         return response.data;
     } catch (error) {
-        console.error('Cart API test failed:', error);
-        throw error;
+        console.error('Không thể kết nối đến Cart API:', error);
+        // API không hoạt động, đánh dấu để biết cần dùng local cart
+        localStorage.setItem('useLocalCart', 'true');
+        return { 
+          success: false, 
+          message: 'Không thể kết nối đến giỏ hàng trên server, sử dụng giỏ hàng cục bộ.',
+          cartItems: getLocalCart().length
+        };
     }
+};
+
+/**
+ * Kiểm tra xem có nên dùng local cart không
+ * @returns {boolean} True nếu nên dùng local cart
+ */
+const shouldUseLocalCart = () => {
+  return localStorage.getItem('useLocalCart') === 'true';
 };
 
 /**
@@ -22,29 +52,53 @@ export const testCartAPI = async () => {
  */
 export const getCart = async () => {
     try {
-        console.log('Calling getCart API');
-        // First try to get the debug session to see what's in the cart on the server
+        console.log('Calling getCart API or local');
+        
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
+          console.log('Sử dụng giỏ hàng cục bộ');
+          return { cart: getLocalCart() };
+        }
+        
+        // Thử gọi API
         try {
-            const debugSession = await apiClient.get('/debug/session');
-            console.log('Server session data:', debugSession.data);
-        } catch (e) {
-            console.warn('Could not get debug session:', e);
+            // First try to get the debug session to see what's in the cart on the server
+            try {
+                const debugSession = await axios.get(`${API_URL}/debug/session`);
+                console.log('Server session data:', debugSession.data);
+            } catch (e) {
+                console.warn('Could not get debug session:', e);
+            }
+            
+            const response = await axios.get(`${CART_API}/cart`, {
+              withCredentials: true
+            });
+            console.log('Giỏ hàng response:', response);
+            console.log('Giỏ hàng data:', response.data);
+            
+            // If response.data.cart is undefined or null, return an empty array
+            if (!response.data.cart) {
+                console.warn('Cart is undefined or null in response');
+                return { success: true, cart: [] };
+            }
+            
+            // Nếu lấy thành công giỏ hàng từ server, đồng bộ với giỏ hàng cục bộ
+            if (response.data.success) {
+              syncLocalCartWithServer(response.data.cart);
+            }
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            const localCart = getLocalCart();
+            return { success: true, cart: localCart };
         }
-        
-        const response = await apiClient.get('/cart/cart');
-        console.log('Giỏ hàng response:', response);
-        console.log('Giỏ hàng data:', response.data);
-        
-        // If response.data.cart is undefined or null, return an empty array
-        if (!response.data.cart) {
-            console.warn('Cart is undefined or null in response');
-            return { success: true, cart: [] };
-        }
-        
-        return response.data;
     } catch (error) {
         console.error('Lỗi khi lấy giỏ hàng:', error);
-        throw error;
+        // Trường hợp xấu nhất, trả về mảng rỗng
+        return { success: true, cart: [] };
     }
 };
 
@@ -53,7 +107,7 @@ export const getCart = async () => {
  * @param {string} productId - ID của sản phẩm
  * @returns {Promise} Kết quả thêm vào giỏ hàng
  */
-export const addToCart = async (productId) => {
+export const addToCart = async (productId, quantity = 1) => {
     try {
         console.log('Adding to cart, product ID:', productId);
         
@@ -63,96 +117,71 @@ export const addToCart = async (productId) => {
         // Set timestamp for cart update to trigger refresh on Cart page
         localStorage.setItem('cartLastUpdate', Date.now().toString());
         
-        // First try to get the debug session to see what's in the cart on the server
-        let sessionData = null;
-        try {
-            const debugSession = await apiClient.get('/debug/session');
-            console.log('Server session before adding:', debugSession.data);
-            sessionData = debugSession.data;
-        } catch (e) {
-            console.warn('Could not get debug session:', e);
-        }
-        
-        // Add product to cart on server
-        const response = await apiClient.post(`/cart/add/${productId}`);
-        console.log('Add to cart response:', response.data);
-        
-        // Set cookie manually if needed using the session ID from the response
-        if (response.data && response.data.sessionId) {
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
             try {
-                document.cookie = `shop.sid=${response.data.sessionId}; domain=curvot.onrender.com; path=/; secure; samesite=none; max-age=86400`;
-                console.log('Set session cookie manually:', document.cookie);
-                localStorage.setItem('tempSessionId', response.data.sessionId);
-            } catch (e) {
-                console.warn('Could not set cookie manually:', e);
+                // Lấy thông tin sản phẩm từ localStorage hoặc từ API sản phẩm
+                const productRes = await axios.get(`${API_URL}/products/${productId}`);
+                if (productRes.data.success) {
+                    const product = productRes.data.product;
+                    const updatedCart = addToLocalCart(product, quantity);
+                    toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
+                    return { 
+                      success: true, 
+                      message: 'Đã thêm sản phẩm vào giỏ hàng cục bộ', 
+                      cart: updatedCart 
+                    };
+                }
+            } catch (error) {
+                console.error('Lỗi khi thêm sản phẩm vào giỏ hàng cục bộ:', error);
+                toast.error('Không thể thêm sản phẩm vào giỏ hàng');
+                return { 
+                  success: false, 
+                  message: 'Lỗi khi thêm sản phẩm vào giỏ hàng cục bộ'
+                };
             }
         }
         
-        // Load current manual cart
-        let manualCart = [];
+        // Thử gọi API để thêm vào giỏ hàng
         try {
-            const savedCart = localStorage.getItem('manualCart');
-            if (savedCart) {
-                manualCart = JSON.parse(savedCart);
-            }
-        } catch (e) {
-            console.warn('Error loading manual cart from localStorage:', e);
-        }
-        
-        // Try to get product details
-        let productDetails = null;
-        try {
-            const productRes = await apiClient.get(`/products/${productId}`);
-            productDetails = productRes.data.product;
-        } catch (e) {
-            console.warn('Could not get product details:', e);
-        }
-        
-        // Update manual cart in localStorage as backup
-        if (productDetails) {
-            const existingItemIndex = manualCart.findIndex(item => item._id === productId);
-            
-            if (existingItemIndex >= 0) {
-                // Update existing item
-                manualCart[existingItemIndex].quantity += 1;
-            } else {
-                // Add new item
-                manualCart.push({
-                    _id: productId,
-                    productId: productId,
-                    quantity: 1,
-                    name: productDetails.name,
-                    price: productDetails.price,
-                    image: productDetails.image
-                });
-            }
-            
-            // Save updated cart to localStorage
-            localStorage.setItem('manualCart', JSON.stringify(manualCart));
-            console.log('Updated manual cart in localStorage:', manualCart);
-        } else if (response.data && response.data.cart) {
-            // If we couldn't get product details but have cart from response, use that
-            localStorage.setItem('manualCart', JSON.stringify(response.data.cart));
-        }
-        
-        // Verify cart was updated in server session
-        try {
-            const cartRes = await apiClient.get('/cart/cart');
-            console.log('Cart after adding product:', cartRes.data);
-            
-            // Check if product was actually added
-            const added = cartRes.data.cart && cartRes.data.cart.some(
-                item => item.productId === productId
+            const response = await axios.post(`${CART_API}/add`,
+              { productId, quantity },
+              { withCredentials: true }
             );
             
-            if (!added) {
-                console.warn('Product was not found in cart after adding');
+            if (response.data.success) {
+              toast.success('Đã thêm sản phẩm vào giỏ hàng');
             }
-        } catch (e) {
-            console.warn('Could not verify cart contents:', e);
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            
+            // Thử thêm vào giỏ hàng cục bộ
+            try {
+                const productRes = await axios.get(`${API_URL}/products/${productId}`);
+                if (productRes.data.success) {
+                    const product = productRes.data.product;
+                    const updatedCart = addToLocalCart(product, quantity);
+                    toast.success(`Đã thêm ${product.name} vào giỏ hàng`);
+                    return { 
+                      success: true, 
+                      message: 'Đã thêm sản phẩm vào giỏ hàng cục bộ', 
+                      cart: updatedCart 
+                    };
+                }
+            } catch (productError) {
+                console.error('Lỗi khi lấy thông tin sản phẩm:', productError);
+            }
+            
+            toast.error('Không thể thêm sản phẩm vào giỏ hàng');
+            return { 
+              success: false, 
+              message: 'Lỗi khi thêm sản phẩm vào giỏ hàng'
+            };
         }
-        
-        return response.data;
     } catch (error) {
         console.error('Lỗi khi thêm vào giỏ hàng:', error, 'Product ID:', productId);
         throw error;
@@ -166,8 +195,42 @@ export const addToCart = async (productId) => {
  */
 export const incrementCartItem = async (productId) => {
     try {
-        const response = await apiClient.post(`/cart/increment/${productId}`);
-        return response.data;
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
+            const updatedCart = incrementLocalCartItem(productId);
+            toast.success('Đã tăng số lượng sản phẩm');
+            return { 
+              success: true, 
+              message: 'Đã tăng số lượng sản phẩm trong giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
+        
+        // Thử gọi API
+        try {
+            const response = await axios.put(`${CART_API}/increment/${productId}`, {}, 
+              { withCredentials: true }
+            );
+            
+            if (response.data.success) {
+              toast.success('Đã tăng số lượng sản phẩm');
+            }
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            
+            const updatedCart = incrementLocalCartItem(productId);
+            toast.success('Đã tăng số lượng sản phẩm');
+            
+            return { 
+              success: true, 
+              message: 'Đã tăng số lượng sản phẩm trong giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
     } catch (error) {
         console.error('Lỗi khi tăng số lượng:', error);
         throw error;
@@ -181,8 +244,42 @@ export const incrementCartItem = async (productId) => {
  */
 export const decrementCartItem = async (productId) => {
     try {
-        const response = await apiClient.post(`/cart/decrement/${productId}`);
-        return response.data;
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
+            const updatedCart = decrementLocalCartItem(productId);
+            toast.success('Đã giảm số lượng sản phẩm');
+            return { 
+              success: true, 
+              message: 'Đã giảm số lượng sản phẩm trong giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
+        
+        // Thử gọi API
+        try {
+            const response = await axios.put(`${CART_API}/decrement/${productId}`, {}, 
+              { withCredentials: true }
+            );
+            
+            if (response.data.success) {
+              toast.success('Đã giảm số lượng sản phẩm');
+            }
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            
+            const updatedCart = decrementLocalCartItem(productId);
+            toast.success('Đã giảm số lượng sản phẩm');
+            
+            return { 
+              success: true, 
+              message: 'Đã giảm số lượng sản phẩm trong giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
     } catch (error) {
         console.error('Lỗi khi giảm số lượng:', error);
         throw error;
@@ -196,8 +293,42 @@ export const decrementCartItem = async (productId) => {
  */
 export const removeFromCart = async (productId) => {
     try {
-        const response = await apiClient.post(`/cart/remove/${productId}`);
-        return response.data;
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
+            const updatedCart = removeFromLocalCart(productId);
+            toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
+            return { 
+              success: true, 
+              message: 'Đã xóa sản phẩm khỏi giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
+        
+        // Thử gọi API
+        try {
+            const response = await axios.delete(`${CART_API}/remove/${productId}`, 
+              { withCredentials: true }
+            );
+            
+            if (response.data.success) {
+              toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
+            }
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            
+            const updatedCart = removeFromLocalCart(productId);
+            toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
+            
+            return { 
+              success: true, 
+              message: 'Đã xóa sản phẩm khỏi giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
     } catch (error) {
         console.error('Lỗi khi xóa khỏi giỏ hàng:', error);
         throw error;
@@ -210,8 +341,44 @@ export const removeFromCart = async (productId) => {
  */
 export const clearCart = async () => {
     try {
-        const response = await apiClient.post('/cart/clear');
-        return response.data;
+        // Nếu flag useLocalCart = true, dùng local cart
+        if (shouldUseLocalCart()) {
+            const updatedCart = clearLocalCart();
+            toast.success('Đã xóa toàn bộ giỏ hàng');
+            return { 
+              success: true, 
+              message: 'Đã xóa toàn bộ giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
+        
+        // Thử gọi API
+        try {
+            const response = await axios.delete(`${CART_API}/clear`, 
+              { withCredentials: true }
+            );
+            
+            if (response.data.success) {
+              toast.success('Đã xóa toàn bộ giỏ hàng');
+              // Đồng bộ xóa giỏ hàng cục bộ
+              clearLocalCart();
+            }
+            
+            return response.data;
+        } catch (error) {
+            // API gặp lỗi, chuyển sang dùng local cart
+            console.error('API error, switching to local cart:', error);
+            localStorage.setItem('useLocalCart', 'true');
+            
+            const updatedCart = clearLocalCart();
+            toast.success('Đã xóa toàn bộ giỏ hàng');
+            
+            return { 
+              success: true, 
+              message: 'Đã xóa toàn bộ giỏ hàng cục bộ', 
+              cart: updatedCart 
+            };
+        }
     } catch (error) {
         console.error('Lỗi khi xóa toàn bộ giỏ hàng:', error);
         throw error;
@@ -250,10 +417,11 @@ const handleAddToCart = async (productId, showNotification) => {
         console.log('Add to cart result:', result);
         
         // Sử dụng thông báo nếu được cung cấp, ngược lại dùng alert
+        const isLocal = shouldUseLocalCart();
         if (typeof showNotification === 'function') {
-            showNotification('Đã thêm sản phẩm vào giỏ hàng! Hãy vào giỏ hàng để xem.', 'success');
+            showNotification(`Đã thêm sản phẩm vào giỏ hàng${isLocal ? ' (cục bộ)' : ''}! Hãy vào giỏ hàng để xem.`, 'success');
         } else {
-            alert(`✅ Đã thêm sản phẩm vào giỏ hàng! Hãy vào giỏ hàng để xem.`);
+            alert(`✅ Đã thêm sản phẩm vào giỏ hàng${isLocal ? ' (cục bộ)' : ''}! Hãy vào giỏ hàng để xem.`);
         }
         
         return result;
