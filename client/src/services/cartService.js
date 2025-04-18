@@ -23,8 +23,24 @@ export const testCartAPI = async () => {
 export const getCart = async () => {
     try {
         console.log('Calling getCart API');
+        // First try to get the debug session to see what's in the cart on the server
+        try {
+            const debugSession = await apiClient.get('/debug/session');
+            console.log('Server session data:', debugSession.data);
+        } catch (e) {
+            console.warn('Could not get debug session:', e);
+        }
+        
         const response = await apiClient.get('/cart/cart');
-        console.log('Giỏ hàng:', response.data);  // Log dữ liệu giỏ hàng để kiểm tra
+        console.log('Giỏ hàng response:', response);
+        console.log('Giỏ hàng data:', response.data);
+        
+        // If response.data.cart is undefined or null, return an empty array
+        if (!response.data.cart) {
+            console.warn('Cart is undefined or null in response');
+            return { success: true, cart: [] };
+        }
+        
         return response.data;
     } catch (error) {
         console.error('Lỗi khi lấy giỏ hàng:', error);

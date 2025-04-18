@@ -22,7 +22,12 @@ export const createAxiosInstance = (baseURL = API_URL) => {
     withCredentials: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    // Add timeout and retry configuration
+    timeout: 10000, // 10 seconds timeout
+    // Ensure cookies are included in all requests
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
   });
 
   // Add request interceptor for auth headers
@@ -32,8 +37,14 @@ export const createAxiosInstance = (baseURL = API_URL) => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // Ensure cookies are sent with each request
+      config.withCredentials = true;
+      
       // Log every request to help with debugging
       console.log(`API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+      console.log('Request headers:', config.headers);
+      
       return config;
     },
     (error) => Promise.reject(error)
@@ -41,10 +52,20 @@ export const createAxiosInstance = (baseURL = API_URL) => {
 
   // Add response interceptor for error handling
   instance.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      // Log successful responses for debugging
+      console.log(`API Response (${response.status}):`, response.config.url);
+      return response;
+    },
     (error) => {
       console.error('API Error:', error.response?.data || error.message);
       console.error('Request that failed:', error.config?.method, error.config?.url);
+      
+      // Check for session related errors
+      if (error.response?.status === 401) {
+        console.warn('Authentication error - session may have expired');
+      }
+      
       return Promise.reject(error);
     }
   );

@@ -46,33 +46,66 @@ const Cart = () => {
       }
       
       const res = await apiClient.get('/cart/cart');
-      console.log('Cart response:', res.data);
+      console.log('Cart response:', res);
+      console.log('Cart data details:', res.data);
       
-      if (!res.data.cart || res.data.cart.length === 0) {
+      // Check if cart data exists and is valid
+      if (!res.data || !res.data.success) {
+        console.error('Invalid cart response:', res.data);
+        setError('Invalid cart data received from server');
+        setCart([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Ensure cart is an array
+      const cartData = res.data.cart || [];
+      console.log('Cart items from server:', cartData);
+      
+      if (cartData.length === 0) {
         console.log('Cart is empty, setting empty cart state');
         setCart([]);
+        setLoading(false);
         return;
       }
       
       // Lấy thông tin chi tiết cho từng sản phẩm trong giỏ hàng
       const cartWithDetails = await Promise.all(
-        res.data.cart.map(async (item) => {
+        cartData.map(async (item) => {
+          console.log('Processing cart item:', item);
           try {
-            const productRes = await apiClient.get(`/products/${item.productId}`);
-            const product = productRes.data.product || {};
-            return {
+            // Use data from cart item if available
+            const cartItemData = {
               _id: item.productId,
-              quantity: item.quantity,
-              name: product.name || item.productName || 'Sản phẩm không xác định',
-              price: product.price || item.productPrice || 0,
-              image: product.image || item.productImage || null,
+              quantity: item.quantity || 1,
+              name: item.productName || 'Sản phẩm không xác định',
+              price: item.productPrice || 0,
+              image: item.productImage || null,
             };
+            
+            // Try to fetch additional details from products API
+            try {
+              const productRes = await apiClient.get(`/products/${item.productId}`);
+              console.log('Product details response:', productRes.data);
+              const product = productRes.data.product || {};
+              
+              // Merge product data with cart data, preferring product data
+              return {
+                ...cartItemData,
+                name: product.name || cartItemData.name,
+                price: product.price || cartItemData.price,
+                image: product.image || cartItemData.image,
+              };
+            } catch (prodErr) {
+              console.warn(`Could not fetch details for product ${item.productId}:`, prodErr);
+              // Return cart item data if product fetch fails
+              return cartItemData;
+            }
           } catch (err) {
-            console.error(`Error fetching details for product ${item.productId}:`, err);
-            // Use data from cart if product details can't be fetched
+            console.error(`Error processing cart item ${item.productId}:`, err);
             return {
-              _id: item.productId,
-              quantity: item.quantity,
+              _id: item.productId || 'unknown',
+              quantity: item.quantity || 1,
               name: item.productName || 'Sản phẩm không tồn tại',
               price: item.productPrice || 0,
               image: item.productImage || null,
@@ -81,6 +114,7 @@ const Cart = () => {
         })
       );
       
+      console.log('Processed cart items with details:', cartWithDetails);
       setCart(cartWithDetails);
     } catch (err) {
       console.error('Lỗi khi tải giỏ hàng:', err);

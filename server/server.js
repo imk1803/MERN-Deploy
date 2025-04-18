@@ -79,22 +79,49 @@ const MongoStore = require('connect-mongo');
 
 // Determine environment for cookie settings
 const isProduction = process.env.NODE_ENV === 'production';
+console.log('Environment:', isProduction ? 'production' : 'development');
 
-app.use(session({
-    secret: process.env.SESSION_SECRET || '123',
+// Session configuration
+const sessionConfig = {
+    name: 'shop.sid', // Set a specific cookie name
+    secret: process.env.SESSION_SECRET || 'shop-session-secret-123',
     resave: false,
-    saveUninitialized: true, // Changed to true to ensure session is created even if not modified
+    saveUninitialized: true, // Create session for all visitors
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/shop',
-        ttl: 24 * 60 * 60 // 1 day
+        ttl: 24 * 60 * 60, // 1 day
+        autoRemove: 'interval',
+        autoRemoveInterval: 60, // In minutes
+        touchAfter: 24 * 3600 // Time period in seconds to force session update
     }),
     cookie: {
         secure: isProduction, // Only use secure in production environment
         httpOnly: true,
-        sameSite: isProduction ? 'none' : 'lax', // Use 'none' in production, 'lax' in development
+        sameSite: isProduction ? 'none' : 'lax', // Use 'none' in production for cross-domain
         maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
-}));
+};
+
+// Log session configuration for debugging
+console.log('Session configuration:', {
+    name: sessionConfig.name,
+    secret: sessionConfig.secret ? 'Set' : 'Not set',
+    cookie: sessionConfig.cookie
+});
+
+app.use(session(sessionConfig));
+
+// Test middleware to verify session is working
+app.use((req, res, next) => {
+    // Log the session ID for all requests
+    console.log(`Request path: ${req.path}, Session ID: ${req.session.id}`);
+    
+    // Count page views for this session
+    req.session.views = (req.session.views || 0) + 1;
+    console.log(`Session views: ${req.session.views}`);
+    
+    next();
+});
 
 // ========================== ROUTES ==========================
 // Debug route to check session
