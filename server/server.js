@@ -113,10 +113,30 @@ console.log('Session configuration:', {
 
 app.use(session(sessionConfig));
 
+// Auto-save the session for every request
+app.use((req, res, next) => {
+    const originalEnd = res.end;
+    
+    res.end = function() {
+        if (req.session && req.session.save) {
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Error auto-saving session:', err);
+                }
+                originalEnd.apply(res, arguments);
+            });
+        } else {
+            originalEnd.apply(res, arguments);
+        }
+    };
+    
+    next();
+});
+
 // Test middleware to verify session is working
 app.use((req, res, next) => {
     // Log the session ID for all requests
-    console.log(`Request path: ${req.path}, Session ID: ${req.session.id}`);
+    console.log(`Request path: ${req.originalUrl}, Session ID: ${req.session.id}`);
     
     // Count page views for this session
     req.session.views = (req.session.views || 0) + 1;
@@ -125,10 +145,14 @@ app.use((req, res, next) => {
     next();
 });
 
-// Export session config for other modules
-module.exports = {
-    sessionConfig
+// Export session config for use in other modules
+const serverConfig = {
+    sessionConfig,
+    sessionName: sessionConfig.name
 };
+
+// Export the server configuration
+module.exports = serverConfig;
 
 // ========================== ROUTES ==========================
 // Debug route to check session

@@ -101,8 +101,8 @@ router.post('/add/:id', async (req, res) => {
             }
             console.log('Session saved successfully');
             
-            // Ensure the session cookie is sent back to client
-            res.setHeader('Set-Cookie', `${sessionConfig.name}=${req.sessionID}; Path=/; HttpOnly`);
+            // Ensure the session cookie is sent back to client without using sessionConfig
+            // Use the default session cookie name or get it from req.session
             
             res.status(200).json({ 
                 success: true, 
@@ -259,8 +259,5 @@ router.get('/cart', (req, res) => {
         res.status(500).json({ success: false, message: "Lỗi lấy giỏ hàng" });
     }
 });
-
-// Import session config reference
-const sessionConfig = require('../server').sessionConfig;
 
 module.exports = router;

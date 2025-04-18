@@ -60,6 +60,8 @@ export const addToCart = async (productId) => {
         // Store product ID in localStorage temporarily to verify cart is working
         localStorage.setItem('lastAddedProduct', productId);
         localStorage.setItem('cartAdded', 'true');
+        // Set timestamp for cart update to trigger refresh on Cart page
+        localStorage.setItem('cartLastUpdate', Date.now().toString());
         
         // First try to get the debug session to see what's in the cart on the server
         try {
@@ -72,6 +74,13 @@ export const addToCart = async (productId) => {
         // Add product to cart
         const response = await apiClient.post(`/cart/add/${productId}`);
         console.log('Add to cart response:', response.data);
+        
+        // Set cookie manually if needed
+        try {
+            document.cookie = `connect.sid=${response.data.sessionId}; path=/; max-age=86400`;
+        } catch (e) {
+            console.warn('Could not set cookie manually:', e);
+        }
         
         // Verify cart was updated
         try {

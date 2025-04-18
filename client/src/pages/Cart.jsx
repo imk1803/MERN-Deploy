@@ -167,6 +167,27 @@ const Cart = () => {
 
   useEffect(() => {
     fetchCart();
+    
+    // Set up an interval to check for cart updates every 5 seconds
+    // This helps when a product was added in another tab or window
+    const checkInterval = setInterval(() => {
+      // Check if there's a lastUpdateTime and if it's within the last minute
+      const lastUpdateTime = localStorage.getItem('cartLastUpdate');
+      if (lastUpdateTime) {
+        const lastUpdate = parseInt(lastUpdateTime, 10);
+        const now = Date.now();
+        // If the cart was updated within the last minute, refresh it
+        if (now - lastUpdate < 60000) {
+          console.log('Detected recent cart update, refreshing cart data');
+          fetchCart();
+          // Clear the update flag after refreshing
+          localStorage.removeItem('cartLastUpdate');
+        }
+      }
+    }, 5000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(checkInterval);
   }, [fetchCart]);
 
   // Debug log cho các state
@@ -262,6 +283,16 @@ const Cart = () => {
 
   const total = cart.reduce((sum, p) => sum + (p.price ? p.price * p.quantity : 0), 0);
 
+  // Add explicit refresh button handler
+  const handleRefresh = () => {
+    console.log('Manual refresh requested');
+    setLoading(true);
+    setRetryCount(0);
+    // Set a timestamp to force refresh
+    localStorage.setItem('cartLastUpdate', Date.now().toString());
+    fetchCart();
+  };
+
   if (loading) {
     console.log('Rendering loading state');
     return (
@@ -298,7 +329,15 @@ const Cart = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-6">🛒 Giỏ hàng của bạn</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">🛒 Giỏ hàng của bạn</h1>
+        <button 
+          onClick={handleRefresh}
+          className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition flex items-center"
+        >
+          <i className="fas fa-sync-alt mr-1"></i> Làm mới
+        </button>
+      </div>
       {cart.length === 0 ? (
         <div className="text-center py-8 bg-white p-4 rounded-lg shadow-md">
           <p className="mb-4 text-gray-600">Giỏ hàng của bạn đang trống!</p>
