@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Fix API URL to correctly point to the admin products endpoint
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvotech.onrender.com/api/admin/products';
+const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api/admin/products';
 
 // Tạo instance axios với config chung
 const adminAxios = axios.create({
@@ -180,7 +180,7 @@ export const getCategories = async () => {
   try {
     console.log('Fetching categories from API');
     // Change the endpoint to use the admin categories API instead
-    const response = await axios.get('https://curvotech.onrender.com/api/admin/products/categories', {
+    const response = await axios.get('https://curvot.onrender.com/api/admin/products/categories', {
       withCredentials: true,
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`

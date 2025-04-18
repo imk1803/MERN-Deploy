@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const paymentAPI = axios.create({
-  baseURL: 'https://curvotech.onrender.com/api',
+  baseURL: 'https://curvot.onrender.com/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'

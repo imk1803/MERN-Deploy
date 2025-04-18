@@ -65,7 +65,7 @@ const ProductList = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await axios.get('https://curvotech.onrender.com/api/products/categories');
+        const res = await axios.get('https://curvot.onrender.com/api/products/categories');
         if (Array.isArray(res.data)) {
           setCategories(res.data);
         } else {
@@ -96,7 +96,7 @@ const ProductList = () => {
           queryParams.append('category', category);
         }
         
-        const res = await axios.get(`https://curvotech.onrender.com/api/products?${queryParams.toString()}`);
+        const res = await axios.get(`https://curvot.onrender.com/api/products?${queryParams.toString()}`);
         
         if (res.data.success) {
           setProducts(res.data.products || []);
@@ -267,7 +267,7 @@ const ProductList = () => {
                       <Link to={`/products/${product._id}`} className="flex flex-col flex-grow">
                         <div className="w-full h-48 overflow-hidden">
                           <img 
-                            src={product.image.startsWith('http') ? product.image : `https://curvotech.onrender.com${product.image}`} 
+                            src={product.image.startsWith('http') ? product.image : `https://curvot.onrender.com${product.image}`} 
                             alt={product.name} 
                             className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" 
                             onError={(e) => {

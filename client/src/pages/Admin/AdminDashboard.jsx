@@ -281,7 +281,7 @@ const AdminDashboard = () => {
 
   // Tạo axios instance
   const axiosInstance = useMemo(() => axios.create({
-    baseURL: 'https://curvotech.onrender.com',
+    baseURL: 'https://curvot.onrender.com',
     withCredentials: true,
     headers: {
       'Content-Type': 'application/json',

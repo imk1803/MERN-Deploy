@@ -340,7 +340,7 @@ const EditProduct = () => {
                           {previewUrl ? 'Xem trước hình mới:' : 'Hình ảnh hiện tại:'}
                         </p>
                         <img
-                          src={previewUrl ? previewUrl : (currentImage.startsWith('http') ? currentImage : `https://curvotech.onrender.com${currentImage}`)}
+                          src={previewUrl ? previewUrl : (currentImage.startsWith('http') ? currentImage : `https://curvot.onrender.com${currentImage}`)}
                           alt="Hình sản phẩm"
                           className="w-full h-auto rounded-md object-cover max-h-48"
                           onError={(e) => {

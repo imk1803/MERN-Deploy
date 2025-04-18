@@ -6,7 +6,7 @@ import { initiateMomoPayment, initiateOnlineBankingPayment, getPaymentMethods } 
 import { useSelector } from 'react-redux';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://curvotech.onrender.com',
+  baseURL: 'https://curvot.onrender.com',
   withCredentials: true
 });
 

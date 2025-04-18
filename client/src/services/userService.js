@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Sử dụng biến môi trường cho API URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvotech.onrender.com/api/users';
+const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api/users';
 
 // Tạo axios instance với cấu hình chung
 const axiosInstance = axios.create({

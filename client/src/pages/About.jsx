@@ -13,7 +13,7 @@ const About = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div>
-            <img src="https://curvotech.onrender.com/images/logoabout.jpg" alt="CurvoTech" className="h-25 w-25 rounded-lg shadow-md" />
+            <img src="https://curvot.onrender.com/images/logoabout.jpg" alt="CurvoTech" className="h-25 w-25 rounded-lg shadow-md" />
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-blue-500">Sứ mệnh của chúng tôi</h2>

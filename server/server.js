@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 5000;
 //
 app.use(
     cors({
-      origin: "https://curvotech.vercel.app",
+      origin: "https://curvot.vercel.app",
       credentials: true, // nếu bạn dùng cookie/session
     })
   );
@@ -67,7 +67,7 @@ app.use(cookieParser()); // Add cookie parser middleware
 
 // CORS Configuration
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'https://curvotech.vercel.app',
+    origin: process.env.CLIENT_URL || 'https://curvot.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']

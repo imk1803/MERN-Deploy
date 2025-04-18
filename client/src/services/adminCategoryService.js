@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvotech.onrender.com/api/admin/categories';
+const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api/admin/categories';
 
 // Create axios instance with common config
 const adminAxios = axios.create({

@@ -55,7 +55,7 @@ const CategoryForm = () => {
               setPreviewUrl(
                 category.image.startsWith('http') 
                   ? category.image 
-                  : `https://curvotech.onrender.com${category.image}`
+                  : `https://curvot.onrender.com${category.image}`
               );
             }
           } else {

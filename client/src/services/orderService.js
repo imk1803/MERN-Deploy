@@ -2,7 +2,7 @@ import axios from 'axios';
 import authHeader from '../utils/authHeader';
 
 // Đường dẫn API 
-const API_URL = 'https://curvotech.onrender.com/api';
+const API_URL = 'https://curvot.onrender.com/api';
 
 /**
  * Log để debug request

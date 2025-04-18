@@ -23,7 +23,7 @@ const AddUser = () => {
     try {
       setLoading(true);
       setError('');
-      await axios.post('https://curvotech.onrender.com/api/admin/users', user, { withCredentials: true });
+      await axios.post('https://curvot.onrender.com/api/admin/users', user, { withCredentials: true });
       setLoading(false);
       navigate('/admin/users');
     } catch (err) {

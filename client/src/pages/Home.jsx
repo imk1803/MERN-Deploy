@@ -16,7 +16,7 @@ const Home = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('https://curvotech.onrender.com/api/products?limit=6', {
+        const response = await axios.get('https://curvot.onrender.com/api/products?limit=6', {
           withCredentials: true
         });
         if (response.data.success) {
@@ -36,7 +36,7 @@ const Home = () => {
   // Xử lý hiển thị đường dẫn ảnh
   const getImageUrl = (imagePath) => {
     if (!imagePath) return '';
-    return imagePath.startsWith('http') ? imagePath : `https://curvotech.onrender.com${imagePath}`;
+    return imagePath.startsWith('http') ? imagePath : `https://curvot.onrender.com${imagePath}`;
   };
 
   return (

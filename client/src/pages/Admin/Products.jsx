@@ -321,7 +321,7 @@ const Products = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {product.image ? (
                         <img
-                          src={product.image.startsWith('http') ? product.image : `https://curvotech.onrender.com${product.image}`}
+                          src={product.image.startsWith('http') ? product.image : `https://curvot.onrender.com${product.image}`}
                           alt={product.name}
                           className="h-16 w-16 rounded-md object-cover"
                           onError={(e) => {

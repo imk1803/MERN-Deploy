@@ -18,7 +18,7 @@ const Cart = () => {
 
   // Sử dụng useMemo để tạo axiosInstance ổn định, không bị tạo mới mỗi lần render
   const axiosInstance = useMemo(() => axios.create({
-    baseURL: 'https://curvotech.onrender.com',
+    baseURL: 'https://curvot.onrender.com',
     withCredentials: true,
     headers: {
       'Content-Type': 'application/json'

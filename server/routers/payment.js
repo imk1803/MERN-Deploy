@@ -16,7 +16,7 @@ const clearCart = async (req) => {
     
     // Gọi API để xóa giỏ hàng (đảm bảo xóa cả ở client)
     try {
-      await axios.post('https://curvotech.onrender.com/api/cart/clear', {}, {
+      await axios.post('https://curvot.onrender.com/api/cart/clear', {}, {
         headers: {
           Cookie: req.headers.cookie // Chuyển tiếp cookie để xác thực session
         }
@@ -37,8 +37,8 @@ const MOMO_CONFIG = {
   partnerCode: 'MOMOBKUN20180529',       // Mã đối tác MoMo sandbox
   accessKey: 'klm05TvNBzhg7h7j',         // Access key MoMo sandbox
   secretKey: 'at67qH6mk8w5Y1nAyMoYKMWACiEi2bsa', // Secret key MoMo sandbox
-  redirectUrl: 'https://curvotech.vercel.app/payment/result',
-  ipnUrl: 'https://curvotech.onrender.com/api/payment/momo/ipn',
+  redirectUrl: 'https://curvot.vercel.app/payment/result',
+  ipnUrl: 'https://curvot.onrender.com/api/payment/momo/ipn',
   requestType: 'captureWallet',
   // Sử dụng endpoint Sandbox của MoMo
   endpoint: 'https://test-payment.momo.vn/v2/gateway/api/create'

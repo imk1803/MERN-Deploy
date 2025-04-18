@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Đường dẫn API có thể cần điều chỉnh tùy theo cấu trúc backend
-const API_URL = process.env.REACT_APP_API_URL || 'https://curvotech.onrender.com/api/admin/orders';
+const API_URL = process.env.REACT_APP_API_URL || 'https://curvot.onrender.com/api/admin/orders';
 
 // Create axios instance with common config
 const adminAxios = axios.create({

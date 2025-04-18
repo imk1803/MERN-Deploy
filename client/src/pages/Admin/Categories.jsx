@@ -15,7 +15,7 @@ const CategoryList = ({ categories, onEdit, onDelete }) => {
           <div className="flex items-start mb-4">
             {category.image ? (
               <img 
-                src={category.image.startsWith('http') ? category.image : `https://curvotech.onrender.com${category.image}`}
+                src={category.image.startsWith('http') ? category.image : `https://curvot.onrender.com${category.image}`}
                 alt={category.name}
                 className="h-12 w-12 rounded-full object-cover mr-3"
                 onError={(e) => {

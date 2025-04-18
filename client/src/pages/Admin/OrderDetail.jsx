@@ -334,7 +334,7 @@ const OrderDetail = () => {
                                 <img
                                   src={item.productId.image.startsWith('http') 
                                     ? item.productId.image 
-                                    : `https://curvotech.onrender.com${item.productId.image}`}
+                                    : `https://curvot.onrender.com${item.productId.image}`}
                                   alt={item.productId.name}
                                   className="h-12 w-12 rounded-md object-cover mr-3"
                                   onError={(e) => {

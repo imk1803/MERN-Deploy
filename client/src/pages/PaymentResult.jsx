@@ -89,7 +89,7 @@ const PaymentResult = () => {
               // Gọi API để cập nhật trạng thái đơn hàng thành 'failed'
               console.log('Payment failed according to MoMo, updating order status');
               const failedResponse = await axios.post(
-                `https://curvotech.onrender.com/api/payment/update-status/${orderId}`,
+                `https://curvot.onrender.com/api/payment/update-status/${orderId}`,
                 { 
                   status: 'failed',
                   reason: searchParams.get('message') || 'Thanh toán MoMo thất bại'
@@ -116,7 +116,7 @@ const PaymentResult = () => {
             console.log('Banking orderId from path:', orderId);
             
             if (orderId) {
-              const orderResponse = await axios.get(`https://curvotech.onrender.com/api/payment/verify/${orderId}`);
+              const orderResponse = await axios.get(`https://curvot.onrender.com/api/payment/verify/${orderId}`);
               console.log('Banking order details:', orderResponse.data);
               
               if (orderResponse.data.success) {
@@ -159,7 +159,7 @@ const PaymentResult = () => {
             if (orderId) {
               // Gọi API để cập nhật trạng thái đơn hàng thành 'failed'
               const failedResponse = await axios.post(
-                `https://curvotech.onrender.com/api/payment/update-status/${orderId}`,
+                `https://curvot.onrender.com/api/payment/update-status/${orderId}`,
                 { 
                   status: 'failed',
                   reason: 'Thanh toán bị hủy bởi người dùng'
@@ -376,7 +376,7 @@ const PaymentResult = () => {
             const orderId = window.location.pathname.split('/').pop();
             // Gọi API để cập nhật trạng thái đơn hàng thành 'failed'
             const response = await axios.post(
-              `https://curvotech.onrender.com/api/payment/update-status/${orderId}`,
+              `https://curvot.onrender.com/api/payment/update-status/${orderId}`,
               { 
                 status: 'failed',
                 reason: 'Thanh toán bị hủy bởi người dùng'

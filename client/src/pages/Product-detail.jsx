@@ -5,7 +5,7 @@ import handleAddToCart from '../services/cartService';
 import Spinner from '../components/Spinner';
 
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = 'https://curvotech.onrender.com';
+axios.defaults.baseURL = 'https://curvot.onrender.com';
 
 // CSS animation styles
 const styles = {
@@ -93,7 +93,7 @@ const ProductDetail = () => {
   const getImageUrl = (imageUrl) => {
     if (!imageUrl) return "https://placehold.co/400x300?text=No+Image";
     if (imageUrl.startsWith('http')) return imageUrl;
-    return `https://curvotech.onrender.com${imageUrl}`;
+    return `https://curvot.onrender.com${imageUrl}`;
   };
 
   return (
